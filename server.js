@@ -16,14 +16,14 @@ const PORT = process.env.PORT || 3000;
 
 // Health check
 app.get('/', (req, res) => {
-  res.json({ status: 'LUMIX Backend running âœ…', version: '2.0.0' });
+  res.json({ status: 'LUMIX Backend running ✅', version: '2.0.0' });
 });
 
 // Upload video to Replicate
 app.post('/upload', upload.single('video'), async (req, res) => {
   try {
     const apiKey = req.headers['x-api-key'];
-    if (!apiKey) return res.status(400).json({ error: 'ClÃ© API manquante' });
+    if (!apiKey) return res.status(400).json({ error: 'Clé API manquante' });
     if (!req.file) return res.status(400).json({ error: 'Fichier manquant' });
 
     console.log('File received:', req.file.originalname, req.file.size, 'bytes', req.file.mimetype);
@@ -45,7 +45,7 @@ app.post('/upload', upload.single('video'), async (req, res) => {
 
     let data;
     try { data = JSON.parse(text); } 
-    catch(e) { return res.status(500).json({ error: 'RÃ©ponse invalide: ' + text }); }
+    catch(e) { return res.status(500).json({ error: 'Réponse invalide: ' + text }); }
 
     if (!response.ok) {
       return res.status(response.status).json({ error: data.detail || data.error || 'Erreur upload' });
@@ -65,7 +65,7 @@ app.post('/upload', upload.single('video'), async (req, res) => {
 app.post('/predict', async (req, res) => {
   try {
     const apiKey = req.headers['x-api-key'];
-    if (!apiKey) return res.status(400).json({ error: 'ClÃ© API manquante' });
+    if (!apiKey) return res.status(400).json({ error: 'Clé API manquante' });
 
     const { version, input } = req.body;
     console.log('Creating prediction:', version, JSON.stringify(input));
@@ -97,7 +97,7 @@ app.post('/predict', async (req, res) => {
 app.get('/predict/:id', async (req, res) => {
   try {
     const apiKey = req.headers['x-api-key'];
-    if (!apiKey) return res.status(400).json({ error: 'ClÃ© API manquante' });
+    if (!apiKey) return res.status(400).json({ error: 'Clé API manquante' });
 
     const response = await fetch('https://api.replicate.com/v1/predictions/' + req.params.id, {
       headers: { 'Authorization': 'Token ' + apiKey }
