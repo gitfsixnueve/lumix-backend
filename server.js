@@ -14,12 +14,14 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
 const PORT = process.env.PORT || 3000;
+const CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || 'dynwd3bng';
+const UPLOAD_PRESET = process.env.CLOUDINARY_UPLOAD_PRESET || 'lumix_unsigned';
 
 app.get('/', (req, res) => {
-  res.json({ status: 'LUMIX Backend v5 ✅', version: '5.0.0' });
+  res.json({ status: 'LUMIX Backend v6 ✅', cloud: CLOUD_NAME });
 });
 
-// Upload video to file.io then get public URL for Replicate
+// Upload to Cloudinary
 app.post('/upload', upload.single('video'), async (req, res) => {
   try {
     const apiKey = req.headers['x-api-key'];
@@ -28,30 +30,37 @@ app.post('/upload', upload.single('video'), async (req, res) => {
 
     console.log('File received:', req.file.size, 'bytes', req.file.mimetype);
 
-    // Upload to file.io
     const form = new FormData();
     form.append('file', req.file.buffer, {
       filename: 'video.mp4',
       contentType: 'video/mp4'
     });
-    form.append('expires', '1d');
-    form.append('maxDownloads', '10');
-    form.append('autoDelete', 'true');
+    form.append('upload_preset', UPLOAD_PRESET);
+    form.append('resource_type', 'video');
 
-    const response = await fetch('https://file.io/', {
+    const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`;
+    console.log('Uploading to:', url);
+
+    const response = await fetch(url, {
       method: 'POST',
-      body: form
+      body: form,
+      headers: form.getHeaders()
     });
 
-    const data = await response.json();
-    console.log('file.io response:', JSON.stringify(data));
+    const text = await response.text();
+    console.log('Cloudinary raw response:', text.substring(0, 200));
 
-    if (!data.success || !data.link) {
-      return res.status(500).json({ error: 'Erreur upload: ' + JSON.stringify(data) });
+    let data;
+    try { data = JSON.parse(text); }
+    catch(e) { return res.status(500).json({ error: 'Réponse invalide Cloudinary: ' + text.substring(0, 100) }); }
+
+    if (!response.ok || data.error) {
+      return res.status(500).json({ error: 'Cloudinary: ' + (data.error?.message || JSON.stringify(data)) });
     }
 
-    console.log('Video URL:', data.link);
-    res.json({ url: data.link });
+    const videoUrl = data.secure_url;
+    console.log('Video URL:', videoUrl);
+    res.json({ url: videoUrl });
 
   } catch (err) {
     console.error('Upload error:', err.message);
@@ -66,7 +75,7 @@ app.post('/predict', async (req, res) => {
     if (!apiKey) return res.status(400).json({ error: 'Clé API manquante' });
 
     const { version, input } = req.body;
-    console.log('Creating prediction, input:', JSON.stringify(input));
+    console.log('Prediction input:', JSON.stringify(input));
 
     const response = await fetch('https://api.replicate.com/v1/predictions', {
       method: 'POST',
@@ -86,7 +95,6 @@ app.post('/predict', async (req, res) => {
 
     res.json(data);
   } catch (err) {
-    console.error('Predict error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -113,5 +121,5 @@ app.get('/predict/:id', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log('LUMIX Backend v5 running on port', PORT);
+  console.log('LUMIX Backend v6 running on port', PORT);
 });
